@@ -161,7 +161,7 @@ impl GameState {
 
             self.score_keep();
 
-            self.super_advanced_ai();
+            self.super_advanced_ai(); 
             
             self.tick -= TICK_TIME;
         }
