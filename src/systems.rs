@@ -4,6 +4,7 @@ use num::clamp;
 use winit::event::*;
 
 pub const SCREEN_SIZE: Vec2i = Vec2i {x: 800, y:500};
+pub const PADDLE_BOUNDS: f32 = SCREEN_SIZE.y as f32 + (PADDLE_SIZE.y / 2.0);
 
 pub const PADDLE_SIZE: Vec2 = Vec2 {x: 50.0, y: 200.0};
 pub const BALL_SIZE: Vec2 = Vec2 {x: 50.0, y: 50.0};
@@ -62,19 +63,6 @@ impl Quad {
 pub struct Vec2i {
     pub x: i32,
     pub y: i32
-}
-
-impl Vec2i {
-    pub fn new<T: Into<i32>>(x: T, y: T) -> Self {
-        Vec2i {
-            x: x.into(),
-            y: y.into()
-        }
-    }
-
-    pub fn zero() -> Self {
-        Vec2i::new(0,0)
-    }
 }
 
 impl Mul<f32> for Vec2i {
@@ -164,72 +152,88 @@ impl GameState {
         self.tick += elapsed_time;
 
         if self.tick > TICK_TIME {
-            self.player.add_position(self.player.dir * PADDLE_SPEED);
             
-            self.player.quad.pos.y = clamp(self.player.quad.pos.y, -SCREEN_SIZE.y as f32 + (PADDLE_SIZE.y / 2.0), SCREEN_SIZE.y as f32 - (PADDLE_SIZE.y / 2.0));
+            GameState::paddle_move(&mut self.player);
 
-            if self.ball.quad.pos.y > SCREEN_SIZE.y as f32 - self.ball.quad.size.y 
-            || self.ball.quad.pos.y < -SCREEN_SIZE.y as f32 + self.ball.quad.size.y {
-                self.ball.dir = Vec2::new(self.ball.dir.x, -self.ball.dir.y);
-            }
+            self.ball_bounce();
 
-            self.check_bounce();
+            self.score_keep();
 
-            self.ball.add_position(self.ball.dir * BALL_SPEED);
-
-            if self.ball.quad.pos.x > SCREEN_SIZE.x as f32 + self.ball.quad.size.x {
-                self.score += 1;
-                self.ball.quad.pos = Vec2::zero();
-            }
+            self.super_advanced_ai();
             
-            if self.ball.quad.pos.x < -SCREEN_SIZE.x as f32 + self.ball.quad.size.x {
-                self.ball.quad.pos = Vec2::zero();
-            }
-
-            if self.ball.dir.x > 0.0 {
-                if self.ball.quad.pos.y > self.com.quad.pos.y + 20.0 {
-                    self.com.dir = Vec2::new(0, 1);
-                } else if self.ball.quad.pos.y < self.com.quad.pos.y - 20.0 {
-                    self.com.dir = Vec2::new(0, -1);
-                } else {
-                    self.com.dir = Vec2::zero();
-                }
-            } else {
-                self.com.dir = Vec2::zero();
-            }
-
-            self.com.add_position(self.com.dir * PADDLE_SPEED);
-
-            self.com.quad.pos.y = clamp(self.com.quad.pos.y, -SCREEN_SIZE.y as f32 + (PADDLE_SIZE.y / 2.0), SCREEN_SIZE.y as f32 - (PADDLE_SIZE.y / 2.0));
-
             self.tick -= TICK_TIME;
         }
     }
 
-    fn check_bounce(&mut self) {
-        if self.player.quad.interects(&self.ball.quad) {
-            let dist = (self.player.quad.pos.y - self.ball.quad.pos.y);
+    fn paddle_move(paddle: &mut Entity) {
+        paddle.add_position(paddle.dir * PADDLE_SPEED);
+        paddle.quad.pos.y = clamp(paddle.quad.pos.y, -PADDLE_BOUNDS, PADDLE_BOUNDS);
+    }
+
+    fn check_ball_collision(&self) -> Option<&Quad> {
+        if self.player.quad.interects(&self.ball.quad) { 
+            return Some(&self.player.quad) 
+        } else if self.com.quad.interects(&self.ball.quad) { 
+            return Some(&self.com.quad) 
+        }
+        None
+    }
+
+    fn ball_bounce(&mut self) {
+
+        if self.ball.quad.pos.y > SCREEN_SIZE.y as f32 - self.ball.quad.size.y 
+        || self.ball.quad.pos.y < -SCREEN_SIZE.y as f32 + self.ball.quad.size.y {
+            self.ball.dir = Vec2::new(self.ball.dir.x, -self.ball.dir.y);
+        }
+
+        if let Some(col) = self.check_ball_collision() {
+            let dist = col.pos.y - self.ball.quad.pos.y;
             
             let normalized_dist = dist / (PADDLE_SIZE.y / 2.0);
 
             let angle = normalized_dist * std::f32::consts::FRAC_PI_4;
 
-            let bounce_x = BALL_SPEED*angle.cos();
-            let bounce_y = BALL_SPEED*-angle.sin();
+            let mut bounce_x = BALL_SPEED*angle.cos();
 
-            self.ball.dir = Vec2::new(bounce_x, bounce_y).normalize();
-        } else if self.com.quad.interects(&self.ball.quad) {
-            let dist = (self.com.quad.pos.y - self.ball.quad.pos.y);
-            
-            let normalized_dist = dist / (PADDLE_SIZE.y / 2.0);
+            if col.pos.x > self.ball.quad.pos.x {
+                bounce_x *= -1.0;
+            }
 
-            let angle = normalized_dist * std::f32::consts::FRAC_PI_4;
-
-            let bounce_x = BALL_SPEED*-angle.cos();
             let bounce_y = BALL_SPEED*-angle.sin();
 
             self.ball.dir = Vec2::new(bounce_x, bounce_y).normalize();
         }
+
+        self.ball.add_position(self.ball.dir * BALL_SPEED);
+    }
+
+    fn score_keep(&mut self) {
+        if self.ball.quad.pos.x > SCREEN_SIZE.x as f32 + self.ball.quad.size.x {
+            self.score += 1;
+            self.ball.quad.pos = Vec2::zero();
+            self.ball.dir = Vec2::new(-1,0);
+        }
+        
+        if self.ball.quad.pos.x < -SCREEN_SIZE.x as f32 + self.ball.quad.size.x {
+            self.ball.quad.pos = Vec2::zero();
+            self.ball.dir = Vec2::new(1,0);
+        }
+    }
+
+    fn super_advanced_ai(&mut self) {
+        if self.ball.dir.x > 0.0 {
+            if self.ball.quad.pos.y > self.com.quad.pos.y + 20.0 {
+                self.com.dir = Vec2::new(0, 1);
+            } else if self.ball.quad.pos.y < self.com.quad.pos.y - 20.0 {
+                self.com.dir = Vec2::new(0, -1);
+            } else {
+                self.com.dir = Vec2::zero();
+            }
+        } else {
+            self.com.dir = Vec2::zero();
+        }
+        
+        GameState::paddle_move(&mut self.com);
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
@@ -274,6 +278,5 @@ impl GameState {
                 return false;
             }
         }
-        false
     }
 }
