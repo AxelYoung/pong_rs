@@ -1,20 +1,18 @@
 use std::ops::{Mul, AddAssign};
 
+use num::clamp;
 use winit::event::*;
-use rand::Rng;
 
 pub const SCREEN_SIZE: Vec2i = Vec2i {x: 800, y:500};
 
 pub const PADDLE_SIZE: Vec2 = Vec2 {x: 50.0, y: 200.0};
 pub const BALL_SIZE: Vec2 = Vec2 {x: 50.0, y: 50.0};
 
-pub const BOUNCE_ANGLE: f32 = 80.0;
-
 const TICKS_PER_SECOND: f32 = 60.0;
 const TICK_TIME: f32 = 1.0 / TICKS_PER_SECOND;
 
-pub const PADDLE_SPEED: f32 = 8.0;
-pub const BALL_SPEED: f32 = 15.0;
+pub const PADDLE_SPEED: f32 = 9.0;
+pub const BALL_SPEED: f32 = 20.0;
 
 pub struct GameState {
     pub player: Entity,
@@ -145,7 +143,7 @@ impl GameState {
         
         let ball = Entity {
             quad: Quad::new(Vec2::new(0, 0), BALL_SIZE),
-            dir: Vec2::new(rand::thread_rng().gen_range(-1.0..=1.0), rand::thread_rng().gen_range(-1.0..=1.0)).normalize()
+            dir: Vec2::new(-1, 0)
         };
 
         GameState {
@@ -168,6 +166,8 @@ impl GameState {
         if self.tick > TICK_TIME {
             self.player.add_position(self.player.dir * PADDLE_SPEED);
             
+            self.player.quad.pos.y = clamp(self.player.quad.pos.y, -SCREEN_SIZE.y as f32 + (PADDLE_SIZE.y / 2.0), SCREEN_SIZE.y as f32 - (PADDLE_SIZE.y / 2.0));
+
             if self.ball.quad.pos.y > SCREEN_SIZE.y as f32 - self.ball.quad.size.y 
             || self.ball.quad.pos.y < -SCREEN_SIZE.y as f32 + self.ball.quad.size.y {
                 self.ball.dir = Vec2::new(self.ball.dir.x, -self.ball.dir.y);
@@ -199,6 +199,8 @@ impl GameState {
             }
 
             self.com.add_position(self.com.dir * PADDLE_SPEED);
+
+            self.com.quad.pos.y = clamp(self.com.quad.pos.y, -SCREEN_SIZE.y as f32 + (PADDLE_SIZE.y / 2.0), SCREEN_SIZE.y as f32 - (PADDLE_SIZE.y / 2.0));
 
             self.tick -= TICK_TIME;
         }
