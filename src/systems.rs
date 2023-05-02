@@ -8,10 +8,12 @@ pub const SCREEN_SIZE: Vec2i = Vec2i {x: 800, y:500};
 pub const PADDLE_SIZE: Vec2 = Vec2 {x: 50.0, y: 200.0};
 pub const BALL_SIZE: Vec2 = Vec2 {x: 50.0, y: 50.0};
 
+pub const BOUNCE_ANGLE: f32 = 80.0;
+
 const TICKS_PER_SECOND: f32 = 60.0;
 const TICK_TIME: f32 = 1.0 / TICKS_PER_SECOND;
 
-pub const PADDLE_SPEED: f32 = 6.0;
+pub const PADDLE_SPEED: f32 = 8.0;
 pub const BALL_SPEED: f32 = 15.0;
 
 pub struct GameState {
@@ -170,9 +172,9 @@ impl GameState {
             || self.ball.quad.pos.y < -SCREEN_SIZE.y as f32 + self.ball.quad.size.y {
                 self.ball.dir = Vec2::new(self.ball.dir.x, -self.ball.dir.y);
             }
-            if self.player.quad.interects(&self.ball.quad) || self.com.quad.interects(&self.ball.quad) {
-                self.ball.dir = Vec2::new(-self.ball.dir.x, self.ball.dir.y);
-            }
+
+            self.check_bounce();
+
             self.ball.add_position(self.ball.dir * BALL_SPEED);
 
             if self.ball.quad.pos.x > SCREEN_SIZE.x as f32 + self.ball.quad.size.x {
@@ -185,9 +187,9 @@ impl GameState {
             }
 
             if self.ball.dir.x > 0.0 {
-                if self.ball.quad.pos.y > self.com.quad.pos.y {
+                if self.ball.quad.pos.y > self.com.quad.pos.y + 20.0 {
                     self.com.dir = Vec2::new(0, 1);
-                } else if self.ball.quad.pos.y < self.com.quad.pos.y {
+                } else if self.ball.quad.pos.y < self.com.quad.pos.y - 20.0 {
                     self.com.dir = Vec2::new(0, -1);
                 } else {
                     self.com.dir = Vec2::zero();
@@ -199,6 +201,32 @@ impl GameState {
             self.com.add_position(self.com.dir * PADDLE_SPEED);
 
             self.tick -= TICK_TIME;
+        }
+    }
+
+    fn check_bounce(&mut self) {
+        if self.player.quad.interects(&self.ball.quad) {
+            let dist = (self.player.quad.pos.y - self.ball.quad.pos.y);
+            
+            let normalized_dist = dist / (PADDLE_SIZE.y / 2.0);
+
+            let angle = normalized_dist * std::f32::consts::FRAC_PI_4;
+
+            let bounce_x = BALL_SPEED*angle.cos();
+            let bounce_y = BALL_SPEED*-angle.sin();
+
+            self.ball.dir = Vec2::new(bounce_x, bounce_y).normalize();
+        } else if self.com.quad.interects(&self.ball.quad) {
+            let dist = (self.com.quad.pos.y - self.ball.quad.pos.y);
+            
+            let normalized_dist = dist / (PADDLE_SIZE.y / 2.0);
+
+            let angle = normalized_dist * std::f32::consts::FRAC_PI_4;
+
+            let bounce_x = BALL_SPEED*-angle.cos();
+            let bounce_y = BALL_SPEED*-angle.sin();
+
+            self.ball.dir = Vec2::new(bounce_x, bounce_y).normalize();
         }
     }
 
