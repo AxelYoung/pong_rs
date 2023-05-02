@@ -18,9 +18,9 @@ pub struct GameState {
     pub player: Entity,
     pub com: Entity,
     pub ball: Entity,
+    pub score: u8,
     previous_time: instant::Instant,
-    tick: f32,
-    score: u8
+    tick: f32
 }
 
 pub struct Entity {
@@ -175,8 +175,12 @@ impl GameState {
             }
             self.ball.add_position(self.ball.dir * BALL_SPEED);
 
-            if self.ball.quad.pos.x > SCREEN_SIZE.x as f32 + self.ball.quad.size.x 
-            || self.ball.quad.pos.x < -SCREEN_SIZE.x as f32 + self.ball.quad.size.x {
+            if self.ball.quad.pos.x > SCREEN_SIZE.x as f32 + self.ball.quad.size.x {
+                self.score += 1;
+                self.ball.quad.pos = Vec2::zero();
+            }
+            
+            if self.ball.quad.pos.x < -SCREEN_SIZE.x as f32 + self.ball.quad.size.x {
                 self.ball.quad.pos = Vec2::zero();
             }
 

@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::systems::{GameState, Vec2, PADDLE_SIZE, SCREEN_SIZE, BALL_SIZE, Quad};
+use crate::systems::{Vec2, GameState, SCREEN_SIZE, Quad};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -45,6 +45,28 @@ impl Vertex {
     }
 }
 
+const SCORE_QUAD_0 : Quad = Quad {
+    pos: Vec2 {
+        x: -20.0,
+        y: 400.0
+    },
+    size: Vec2 {
+        x: 30.0,
+        y: 50.0
+    }
+};
+
+const SCORE_QUAD_1 : Quad = Quad {
+    pos: Vec2 {
+        x: 20.0,
+        y: 400.0
+    },
+    size: Vec2 {
+        x: 30.0,
+        y: 50.0
+    }
+};
+
 pub fn create_buffers(device: &wgpu::Device, state: &GameState) -> (Option<wgpu::Buffer>, Option<wgpu::Buffer>, usize) {
 
     let mut verts : Vec<Vertex> = vec![];
@@ -53,6 +75,10 @@ pub fn create_buffers(device: &wgpu::Device, state: &GameState) -> (Option<wgpu:
     create_quad(&state.player.quad, [10, 0], &mut verts, &mut indis);
     create_quad(&state.com.quad,  [10, 0], &mut verts, &mut indis);
     create_quad(&state.ball.quad, [10, 0], &mut verts, &mut indis);
+    
+    create_quad(&SCORE_QUAD_1, [state.score % 10, 0], &mut verts, &mut indis);
+    let first_digit = state.score / 10;
+    create_quad(&SCORE_QUAD_0, [first_digit, 0], &mut verts, &mut indis);
 
     let vertex_buffer = device.create_buffer_init(
         &wgpu::util::BufferInitDescriptor {

@@ -28,7 +28,7 @@ pub fn run() {
     let event_loop = EventLoop::new();
 
     let window = WindowBuilder::new()
-        .with_title("Tetris")
+        .with_title("Pong")
         .with_inner_size(PhysicalSize { width: SCREEN_SIZE.x, height: SCREEN_SIZE.y})
         .with_resizable(false)
         .build(&event_loop)
