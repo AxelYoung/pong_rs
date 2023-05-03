@@ -183,9 +183,10 @@ impl GameState {
 
     fn ball_bounce(&mut self) {
 
-        if self.ball.quad.pos.y > SCREEN_SIZE.y as f32 - self.ball.quad.size.y 
-        || self.ball.quad.pos.y < -SCREEN_SIZE.y as f32 + self.ball.quad.size.y {
-            self.ball.dir = Vec2::new(self.ball.dir.x, -self.ball.dir.y);
+        if self.ball.quad.pos.y > SCREEN_SIZE.y as f32 - self.ball.quad.size.y {
+            self.ball.dir = Vec2::new(self.ball.dir.x, -(self.ball.dir.y.abs()));
+        } else if self.ball.quad.pos.y < -SCREEN_SIZE.y as f32 + self.ball.quad.size.y {
+            self.ball.dir = Vec2::new(self.ball.dir.x, self.ball.dir.y.abs());
         }
 
         if let Some(col) = self.check_ball_collision() {
